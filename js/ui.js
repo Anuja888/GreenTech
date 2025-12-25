@@ -145,56 +145,149 @@ class UIManager {
     showDashboard(role, workspace) {
         try {
             console.log('showDashboard called with role:', role, 'workspace:', workspace);
-            const analytics = dataManager.getAnalytics();
+            const analytics = dataManager.getAnalytics(window.ecoTraceApp.currentFilters);
+            const trends = dataManager.getTrends(window.ecoTraceApp.currentFilters);
+            const comparison = dataManager.getPeriodComparison(window.ecoTraceApp.currentFilters);
+            const highImpactLocations = dataManager.getHighImpactLocations(window.ecoTraceApp.currentFilters);
             console.log('Analytics data:', analytics);
             
             const content = `
                 <div class="section">
                     <h2>Community Impact Dashboard</h2>
-                    <div class="metrics">
-                        <div class="metric">
-                            <div class="metric-value">${analytics.totalIssues}</div>
-                            <div class="metric-label">Total Issues</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.resolvedIssues}</div>
-                            <div class="metric-label">Resolved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.pendingIssues}</div>
-                            <div class="metric-label">Pending</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.waterSaved}L</div>
-                            <div class="metric-label">Water Saved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.energySaved}kWh</div>
-                            <div class="metric-label">Energy Saved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.co2Avoided.toFixed(1)}kg</div>
-                            <div class="metric-label">CO₂ Avoided</div>
-                        </div>
-                    </div>
+                    <table class="dashboard-table">
+                        <tbody>
+                            <tr>
+                                <td>Total Issues</td>
+                                <td class="metric-value">${analytics.totalIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Resolved</td>
+                                <td class="metric-value">${analytics.resolvedIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Pending</td>
+                                <td class="metric-value">${analytics.pendingIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Water Saved</td>
+                                <td class="metric-value">${analytics.waterSaved}L</td>
+                            </tr>
+                            <tr>
+                                <td>Energy Saved</td>
+                                <td class="metric-value">${analytics.energySaved}kWh</td>
+                            </tr>
+                            <tr>
+                                <td>CO₂ Avoided</td>
+                                <td class="metric-value">${analytics.co2Avoided.toFixed(1)}kg</td>
+                            </tr>
+                        </tbody>
+                    </table>
                     
                     <div class="filter-group">
                         <div>
                             <label for="time-filter">Time Range:</label>
                             <select id="time-filter">
-                                <option value="all">All Time</option>
-                                <option value="week">Last Week</option>
-                                <option value="month">Last Month</option>
-                                <option value="year">Last Year</option>
+                                <option value="all" ${window.ecoTraceApp.currentFilters.timeRange === 'all' ? 'selected' : ''}>All Time</option>
+                                <option value="week" ${window.ecoTraceApp.currentFilters.timeRange === 'week' ? 'selected' : ''}>Last Week</option>
+                                <option value="month" ${window.ecoTraceApp.currentFilters.timeRange === 'month' ? 'selected' : ''}>Last Month</option>
+                                <option value="year" ${window.ecoTraceApp.currentFilters.timeRange === 'year' ? 'selected' : ''}>Last Year</option>
                             </select>
                         </div>
                         <div>
                             <label for="location-filter">Location:</label>
                             <select id="location-filter">
-                                <option value="">All Locations</option>
+                                <option value="" ${window.ecoTraceApp.currentFilters.location === '' ? 'selected' : ''}>All Locations</option>
                                 ${this.getLocationOptions()}
                             </select>
                         </div>
+                    </div>
+                    
+                    <h3>Trends Over Time</h3>
+                    <div class="table-scroll">
+                        <table class="trends-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Reported</th>
+                                    <th>Resolved</th>
+                                    <th>Water Saved</th>
+                                    <th>Energy Saved</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${trends.length > 0 ? trends.map(trend => `
+                                    <tr>
+                                        <td>${new Date(trend.date).toLocaleDateString()}</td>
+                                        <td>${trend.reported}</td>
+                                        <td>${trend.resolved}</td>
+                                        <td>${trend.waterSaved}L</td>
+                                        <td>${trend.energySaved}kWh</td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="5">No data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <h3>Period Comparison</h3>
+                    <table class="comparison-table">
+                        <thead>
+                            <tr>
+                                <th>Metric</th>
+                                <th>Current Period</th>
+                                <th>Previous Period</th>
+                                <th>Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Total Issues</td>
+                                <td>${comparison.current.totalIssues}</td>
+                                <td>${comparison.previous.totalIssues}</td>
+                                <td>${comparison.changes.totalIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Resolved Issues</td>
+                                <td>${comparison.current.resolvedIssues}</td>
+                                <td>${comparison.previous.resolvedIssues}</td>
+                                <td>${comparison.changes.resolvedIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Water Saved</td>
+                                <td>${comparison.current.waterSaved}L</td>
+                                <td>${comparison.previous.waterSaved}L</td>
+                                <td>${comparison.changes.waterSaved}</td>
+                            </tr>
+                            <tr>
+                                <td>Energy Saved</td>
+                                <td>${comparison.current.energySaved}kWh</td>
+                                <td>${comparison.previous.energySaved}kWh</td>
+                                <td>${comparison.changes.energySaved}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h3>High-Impact Locations</h3>
+                    <div class="table-scroll">
+                        <table class="locations-table">
+                            <thead>
+                                <tr>
+                                    <th>Location</th>
+                                    <th>Unresolved Issues</th>
+                                    <th>Estimated Impact</th>
+                                    <th>Avg Resolution Time (days)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${highImpactLocations.length > 0 ? highImpactLocations.map(loc => `
+                                    <tr>
+                                        <td>${loc.location}</td>
+                                        <td>${loc.unresolvedIssues}</td>
+                                        <td>${loc.estimatedImpact.toFixed(1)}</td>
+                                        <td>${loc.avgResolutionTime.toFixed(1)}</td>
+                                    </tr>
+                                `).join('') : '<tr><td colspan="4">No high-impact locations</td></tr>'}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
@@ -207,13 +300,19 @@ class UIManager {
             const locationFilter = document.getElementById('location-filter');
             
             if (timeFilter) {
-                timeFilter.addEventListener('change', () => this.updateDashboard());
+                timeFilter.addEventListener('change', () => {
+                    window.ecoTraceApp.currentFilters.timeRange = timeFilter.value;
+                    this.updateDashboard();
+                });
             } else {
                 console.error('time-filter element not found');
             }
             
             if (locationFilter) {
-                locationFilter.addEventListener('change', () => this.updateDashboard());
+                locationFilter.addEventListener('change', () => {
+                    window.ecoTraceApp.currentFilters.location = locationFilter.value;
+                    this.updateDashboard();
+                });
             } else {
                 console.error('location-filter element not found');
             }
@@ -232,18 +331,60 @@ class UIManager {
     }
 
     updateDashboard() {
-        const timeRange = document.getElementById('time-filter').value;
-        const location = document.getElementById('location-filter').value;
-        const analytics = dataManager.getAnalytics({ timeRange, location });
+        const analytics = dataManager.getAnalytics(window.ecoTraceApp.currentFilters);
+        const trends = dataManager.getTrends(window.ecoTraceApp.currentFilters);
+        const comparison = dataManager.getPeriodComparison(window.ecoTraceApp.currentFilters);
+        const highImpactLocations = dataManager.getHighImpactLocations(window.ecoTraceApp.currentFilters);
         
-        // Update metrics
-        const metrics = this.mainContent.querySelectorAll('.metric-value');
-        metrics[0].textContent = analytics.totalIssues;
-        metrics[1].textContent = analytics.resolvedIssues;
-        metrics[2].textContent = analytics.pendingIssues;
-        metrics[3].textContent = `${analytics.waterSaved}L`;
-        metrics[4].textContent = `${analytics.energySaved}kWh`;
-        metrics[5].textContent = `${analytics.co2Avoided.toFixed(1)}kg`;
+        // Update metrics in table
+        const rows = this.mainContent.querySelectorAll('.dashboard-table tbody tr');
+        rows[0].cells[1].textContent = analytics.totalIssues;
+        rows[1].cells[1].textContent = analytics.resolvedIssues;
+        rows[2].cells[1].textContent = analytics.pendingIssues;
+        rows[3].cells[1].textContent = `${analytics.waterSaved}L`;
+        rows[4].cells[1].textContent = `${analytics.energySaved}kWh`;
+        rows[5].cells[1].textContent = `${analytics.co2Avoided.toFixed(1)}kg`;
+        
+        // Update trends table
+        const trendsTable = this.mainContent.querySelector('.trends-table tbody');
+        trendsTable.innerHTML = trends.length > 0 ? trends.map(trend => `
+            <tr>
+                <td>${new Date(trend.date).toLocaleDateString()}</td>
+                <td>${trend.reported}</td>
+                <td>${trend.resolved}</td>
+                <td>${trend.waterSaved}L</td>
+                <td>${trend.energySaved}kWh</td>
+            </tr>
+        `).join('') : '<tr><td colspan="5">No data available</td></tr>';
+        
+        // Update comparison table
+        const comparisonRows = this.mainContent.querySelectorAll('.comparison-table tbody tr');
+        comparisonRows[0].cells[1].textContent = comparison.current.totalIssues;
+        comparisonRows[0].cells[2].textContent = comparison.previous.totalIssues;
+        comparisonRows[0].cells[3].textContent = comparison.changes.totalIssues;
+        
+        comparisonRows[1].cells[1].textContent = comparison.current.resolvedIssues;
+        comparisonRows[1].cells[2].textContent = comparison.previous.resolvedIssues;
+        comparisonRows[1].cells[3].textContent = comparison.changes.resolvedIssues;
+        
+        comparisonRows[2].cells[1].textContent = `${comparison.current.waterSaved}L`;
+        comparisonRows[2].cells[2].textContent = `${comparison.previous.waterSaved}L`;
+        comparisonRows[2].cells[3].textContent = comparison.changes.waterSaved;
+        
+        comparisonRows[3].cells[1].textContent = `${comparison.current.energySaved}kWh`;
+        comparisonRows[3].cells[2].textContent = `${comparison.previous.energySaved}kWh`;
+        comparisonRows[3].cells[3].textContent = comparison.changes.energySaved;
+        
+        // Update high-impact locations table
+        const locationsTable = this.mainContent.querySelector('.locations-table tbody');
+        locationsTable.innerHTML = highImpactLocations.length > 0 ? highImpactLocations.map(loc => `
+            <tr>
+                <td>${loc.location}</td>
+                <td>${loc.unresolvedIssues}</td>
+                <td>${loc.estimatedImpact.toFixed(1)}</td>
+                <td>${loc.avgResolutionTime.toFixed(1)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="4">No high-impact locations</td></tr>';
     }
 
     getLocationOptions() {
@@ -308,6 +449,11 @@ class UIManager {
         dataManager.addIssue(issue);
         alert('Issue reported successfully!');
         this.showReportForm(); // Reset form
+        
+        // Update dashboard if it's currently visible
+        if (document.querySelector('.dashboard-table')) {
+            this.updateDashboard();
+        }
     }
 
     // Issues tracking
@@ -323,35 +469,40 @@ class UIManager {
         const content = `
             <div class="section">
                 <h2>Issue Lifecycle Tracking</h2>
-                <div class="issues-list">
-                    ${issues.map(issue => `
-                        <div class="card">
-                            <div class="issue-header">
-                                <span class="resource-type">${issue.resourceType}</span>
-                                <span class="severity severity-${issue.severity.toLowerCase()}">${issue.severity}</span>
-                                <span class="status status-${issue.status.toLowerCase().replace(' ', '-')}">${issue.status}</span>
-                            </div>
-                            <div class="issue-details">
-                                <p><strong>Location:</strong> ${issue.location}</p>
-                                <p><strong>Reported:</strong> ${new Date(issue.timestamp).toLocaleString()}</p>
-                                ${issue.note ? `<p><strong>Note:</strong> ${issue.note}</p>` : ''}
-                                ${this.getStatusTimeline(issue)}
-                            </div>
-                            ${isAuthority ? `
-                                <div class="form-group">
-                                    <label>Update Status:</label>
-                                    <select class="status-update" data-issue-id="${issue.id}">
-                                        <option value="">Select Status</option>
-                                        ${statusOptions.map(status => 
-                                            `<option value="${status}" ${status === issue.status ? 'selected' : ''}>${status}</option>`
-                                        ).join('')}
-                                    </select>
-                                    <button class="update-status-btn" data-issue-id="${issue.id}">Update</button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    `).join('')}
-                </div>
+                <table class="issues-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Location</th>
+                            <th>Severity</th>
+                            <th>Status</th>
+                            <th>Reported</th>
+                            ${isAuthority ? '<th>Action</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${issues.map(issue => `
+                            <tr>
+                                <td>${issue.resourceType}</td>
+                                <td>${issue.location}</td>
+                                <td class="severity severity-${issue.severity.toLowerCase()}">${issue.severity}</td>
+                                <td class="status status-${issue.status.toLowerCase().replace(' ', '-')}">${issue.status}</td>
+                                <td>${new Date(issue.timestamp).toLocaleDateString()}</td>
+                                ${isAuthority ? `
+                                    <td>
+                                        <select class="status-update" data-issue-id="${issue.id}">
+                                            <option value="">Select Status</option>
+                                            ${statusOptions.map(status => 
+                                                `<option value="${status}" ${status === issue.status ? 'selected' : ''}>${status}</option>`
+                                            ).join('')}
+                                        </select>
+                                        <button class="update-status-btn" data-issue-id="${issue.id}">Update</button>
+                                    </td>
+                                ` : ''}
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
         this.mainContent.innerHTML = content;
@@ -366,6 +517,10 @@ class UIManager {
                     if (newStatus) {
                         dataManager.updateIssueStatus(issueId, newStatus, 'Authority');
                         this.showIssues(role, workspace);
+                        // Also update dashboard if it's currently visible
+                        if (document.querySelector('.dashboard-table')) {
+                            this.updateDashboard();
+                        }
                     }
                 });
             });
@@ -387,7 +542,7 @@ class UIManager {
 
     // Analytics
     showAnalytics() {
-        const hotspots = dataManager.getHotspots();
+        const hotspots = dataManager.getHotspots(window.ecoTraceApp.currentFilters);
         const deviation = this.calculateDeviation();
         const content = `
             <div class="section">
@@ -427,20 +582,22 @@ class UIManager {
                 
                 <div id="performance-tab" class="tab-content">
                     <h3>System Performance Metrics</h3>
-                    <div class="metrics">
-                        <div class="metric">
-                            <div class="metric-value">${Object.keys(hotspots).length}</div>
-                            <div class="metric-label">Active Locations</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${Object.values(hotspots).reduce((sum, loc) => sum + loc.total, 0)}</div>
-                            <div class="metric-label">Total Issues</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${Object.values(hotspots).reduce((sum, loc) => sum + loc.resolved, 0)}</div>
-                            <div class="metric-label">Issues Resolved</div>
-                        </div>
-                    </div>
+                    <table class="performance-table">
+                        <tbody>
+                            <tr>
+                                <td>Active Locations</td>
+                                <td>${Object.keys(hotspots).length}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Issues</td>
+                                <td>${Object.values(hotspots).reduce((sum, loc) => sum + loc.total, 0)}</td>
+                            </tr>
+                            <tr>
+                                <td>Issues Resolved</td>
+                                <td>${Object.values(hotspots).reduce((sum, loc) => sum + loc.resolved, 0)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div id="deviation-tab" class="tab-content">
@@ -552,40 +709,46 @@ class UIManager {
 
     // Audit snapshot
     showAudit() {
-        const analytics = dataManager.getAnalytics();
+        const analytics = dataManager.getAnalytics(window.ecoTraceApp.currentFilters);
         const content = `
             <div class="section">
                 <h2>Environmental Audit Snapshot</h2>
-                <div class="card">
-                    <h3>Time Range: All Time</h3>
-                    <div class="audit-summary">
-                        <div class="metric">
-                            <div class="metric-value">${analytics.totalIssues}</div>
-                            <div class="metric-label">Total Issues Reported</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.resolvedIssues}</div>
-                            <div class="metric-label">Issues Resolved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.pendingIssues}</div>
-                            <div class="metric-label">Issues Pending</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.waterSaved}L</div>
-                            <div class="metric-label">Total Water Saved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.energySaved}kWh</div>
-                            <div class="metric-label">Total Energy Saved</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-value">${analytics.co2Avoided.toFixed(1)}kg</div>
-                            <div class="metric-label">Total CO₂ Avoided</div>
-                        </div>
+                <div class="audit-report">
+                    <div class="report-header">
+                        <strong>Report Period:</strong> ${window.ecoTraceApp.currentFilters.timeRange === 'all' ? 'All Time' : 
+                            window.ecoTraceApp.currentFilters.timeRange === 'week' ? 'Last Week' :
+                            window.ecoTraceApp.currentFilters.timeRange === 'month' ? 'Last Month' : 'Last Year'}
+                        ${window.ecoTraceApp.currentFilters.location ? `<br><strong>Location Filter:</strong> ${window.ecoTraceApp.currentFilters.location}` : ''}
+                        <br><strong>Generated:</strong> ${new Date().toLocaleString()}
                     </div>
-                    <h3>Key Problem Areas</h3>
-                    <p>Analysis of hotspots and recurring issues would be detailed here.</p>
+                    <table class="audit-table">
+                        <tbody>
+                            <tr>
+                                <td>Total Issues Reported</td>
+                                <td>${analytics.totalIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Issues Resolved</td>
+                                <td>${analytics.resolvedIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Issues Pending</td>
+                                <td>${analytics.pendingIssues}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Water Saved</td>
+                                <td>${analytics.waterSaved}L</td>
+                            </tr>
+                            <tr>
+                                <td>Total Energy Saved</td>
+                                <td>${analytics.energySaved}kWh</td>
+                            </tr>
+                            <tr>
+                                <td>Total CO₂ Avoided</td>
+                                <td>${analytics.co2Avoided.toFixed(1)}kg</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         `;
@@ -660,9 +823,32 @@ class UIManager {
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const previousWeek = new Date(lastWeek.getTime() - 7 * 24 * 60 * 60 * 1000);
         
+        // Apply current filters to issues
+        let filteredIssues = issues;
+        if (window.ecoTraceApp.currentFilters.timeRange) {
+            const startDate = new Date();
+            switch (window.ecoTraceApp.currentFilters.timeRange) {
+                case 'week':
+                    startDate.setDate(now.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setMonth(now.getMonth() - 1);
+                    break;
+                case 'year':
+                    startDate.setFullYear(now.getFullYear() - 1);
+                    break;
+                default:
+                    startDate.setFullYear(1970); // All time
+            }
+            filteredIssues = issues.filter(issue => new Date(issue.timestamp) >= startDate);
+        }
+        if (window.ecoTraceApp.currentFilters.location) {
+            filteredIssues = filteredIssues.filter(issue => issue.location === window.ecoTraceApp.currentFilters.location);
+        }
+        
         // Calculate current week issues
-        const currentWeekIssues = issues.filter(issue => new Date(issue.timestamp) >= lastWeek);
-        const previousWeekIssues = issues.filter(issue => {
+        const currentWeekIssues = filteredIssues.filter(issue => new Date(issue.timestamp) >= lastWeek);
+        const previousWeekIssues = filteredIssues.filter(issue => {
             const date = new Date(issue.timestamp);
             return date >= previousWeek && date < lastWeek;
         });

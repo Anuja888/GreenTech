@@ -134,17 +134,17 @@ class DataManager {
         let energySaved = 0;
         let co2Avoided = 0;
         
-        // Calculate impact based on resolved issues
+        // Rule-based impact calculation for resolved issues
         filteredIssues.forEach(issue => {
             if (issue.status === 'Resolved') {
                 if (issue.resourceType === 'Water') {
-                    // Estimate: each resolved water issue saves equivalent to 2 showers per week for a month
-                    waterSaved += calculations.water.shower * 8;
-                    co2Avoided += calculations.water.shower * 8 * calculations.carbon.water;
+                    // Each resolved water issue saves 30 liters (equivalent to 2 toilet flushes + 2 faucet minutes)
+                    waterSaved += 30;
+                    co2Avoided += 30 * calculations.carbon.water;
                 } else if (issue.resourceType === 'Electricity') {
-                    // Estimate: each resolved energy issue saves 5 hours of AC per week for a month
-                    energySaved += calculations.energy.ac * 20;
-                    co2Avoided += calculations.energy.ac * 20 * calculations.carbon.electricity;
+                    // Each resolved energy issue saves 5 kWh (equivalent to 3 hours of AC or 6 hours of refrigerator)
+                    energySaved += 5;
+                    co2Avoided += 5 * calculations.carbon.electricity;
                 }
             }
         });
@@ -153,18 +153,205 @@ class DataManager {
             totalIssues,
             resolvedIssues,
             pendingIssues,
-            waterSaved,
-            energySaved,
+            waterSaved: Math.round(waterSaved),
+            energySaved: Math.round(energySaved),
             co2Avoided
         };
     }
 
-    // Hotspot analysis
-    getHotspots() {
+    // Trend analysis
+    getTrends(filters = {}) {
         const issues = this.getIssues();
-        const locationStats = {};
+        const calculations = this.getImpactCalculations();
+        
+        let filteredIssues = issues;
+        
+        if (filters.timeRange) {
+            const now = new Date();
+            const startDate = new Date();
+            switch (filters.timeRange) {
+                case 'week':
+                    startDate.setDate(now.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setMonth(now.getMonth() - 1);
+                    break;
+                case 'year':
+                    startDate.setFullYear(now.getFullYear() - 1);
+                    break;
+            }
+            filteredIssues = issues.filter(issue => new Date(issue.timestamp) >= startDate);
+        }
+        
+        if (filters.location) {
+            filteredIssues = filteredIssues.filter(issue => issue.location === filters.location);
+        }
+        
+        // Group by day
+        const dailyData = {};
+        filteredIssues.forEach(issue => {
+            const date = new Date(issue.timestamp).toISOString().split('T')[0];
+            if (!dailyData[date]) {
+                dailyData[date] = { reported: 0, resolved: 0, waterSaved: 0, energySaved: 0 };
+            }
+            dailyData[date].reported++;
+            if (issue.status === 'Resolved') {
+                dailyData[date].resolved++;
+                if (issue.resourceType === 'Water') {
+                    dailyData[date].waterSaved += 30;
+                } else if (issue.resourceType === 'Electricity') {
+                    dailyData[date].energySaved += 5;
+                }
+            }
+        });
+        
+        // Convert to array and sort by date
+        const trends = Object.entries(dailyData)
+            .map(([date, data]) => ({ date, ...data }))
+            .sort((a, b) => a.date.localeCompare(b.date));
+        
+        return trends;
+    }
+
+    // Period comparison
+    getPeriodComparison(filters = {}) {
+        const issues = this.getIssues();
+        const now = new Date();
+        
+        let filteredIssues = issues;
+        
+        if (filters.location) {
+            filteredIssues = filteredIssues.filter(issue => issue.location === filters.location);
+        }
+        
+        // Determine current period
+        let currentStart, previousStart, previousEnd;
+        if (filters.timeRange === 'week') {
+            currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            previousStart = new Date(currentStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+            previousEnd = currentStart;
+        } else if (filters.timeRange === 'month') {
+            currentStart = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+            previousStart = new Date(now.getFullYear(), now.getMonth() - 2, now.getDate());
+            previousEnd = currentStart;
+        } else if (filters.timeRange === 'year') {
+            currentStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+            previousStart = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate());
+            previousEnd = currentStart;
+        } else {
+            // All time - compare last 30 days vs previous 30 days
+            currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            previousStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+            previousEnd = currentStart;
+        }
+        
+        const currentPeriodIssues = filteredIssues.filter(issue => new Date(issue.timestamp) >= currentStart);
+        const previousPeriodIssues = filteredIssues.filter(issue => {
+            const date = new Date(issue.timestamp);
+            return date >= previousStart && date < previousEnd;
+        });
+        
+        const current = this.calculatePeriodMetrics(currentPeriodIssues);
+        const previous = this.calculatePeriodMetrics(previousPeriodIssues);
+        
+        return {
+            current,
+            previous,
+            changes: {
+                totalIssues: this.calculateChange(current.totalIssues, previous.totalIssues),
+                resolvedIssues: this.calculateChange(current.resolvedIssues, previous.resolvedIssues),
+                waterSaved: this.calculateChange(current.waterSaved, previous.waterSaved),
+                energySaved: this.calculateChange(current.energySaved, previous.energySaved)
+            }
+        };
+    }
+
+    calculatePeriodMetrics(issues) {
+        const totalIssues = issues.length;
+        const resolvedIssues = issues.filter(i => i.status === 'Resolved').length;
+        let waterSaved = 0;
+        let energySaved = 0;
         
         issues.forEach(issue => {
+            if (issue.status === 'Resolved') {
+                if (issue.resourceType === 'Water') {
+                    waterSaved += 30;
+                } else if (issue.resourceType === 'Electricity') {
+                    energySaved += 5;
+                }
+            }
+        });
+        
+        return { totalIssues, resolvedIssues, waterSaved, energySaved };
+    }
+
+    calculateChange(current, previous) {
+        if (previous === 0) return current > 0 ? '+' + current : current;
+        const change = ((current - previous) / previous) * 100;
+        const sign = change > 0 ? '+' : '';
+        return sign + change.toFixed(1) + '%';
+    }
+
+    // High-impact locations
+    getHighImpactLocations(filters = {}) {
+        const hotspots = this.getHotspots(filters);
+        
+        return Object.entries(hotspots)
+            .map(([location, stats]) => ({
+                location,
+                unresolvedIssues: stats.total - stats.resolved,
+                estimatedImpact: this.calculateLocationImpact(stats),
+                avgResolutionTime: stats.avgResolutionTime
+            }))
+            .filter(loc => loc.unresolvedIssues > 0)
+            .sort((a, b) => b.estimatedImpact - a.estimatedImpact); // Sort by impact descending
+    }
+
+    calculateLocationImpact(stats) {
+        // Simple impact score: unresolved issues * severity weight
+        const severityWeight = {
+            high: 3,
+            medium: 2,
+            low: 1
+        };
+        
+        return stats.total * (
+            (stats.severity.high * severityWeight.high) +
+            (stats.severity.medium * severityWeight.medium) +
+            (stats.severity.low * severityWeight.low)
+        ) / stats.total;
+    }
+
+    // Hotspot analysis
+    getHotspots(filters = {}) {
+        const issues = this.getIssues();
+        
+        let filteredIssues = issues;
+        
+        if (filters.timeRange) {
+            const now = new Date();
+            const startDate = new Date();
+            switch (filters.timeRange) {
+                case 'week':
+                    startDate.setDate(now.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setMonth(now.getMonth() - 1);
+                    break;
+                case 'year':
+                    startDate.setFullYear(now.getFullYear() - 1);
+                    break;
+            }
+            filteredIssues = issues.filter(issue => new Date(issue.timestamp) >= startDate);
+        }
+        
+        if (filters.location) {
+            filteredIssues = filteredIssues.filter(issue => issue.location === filters.location);
+        }
+        
+        const locationStats = {};
+        
+        filteredIssues.forEach(issue => {
             if (!locationStats[issue.location]) {
                 locationStats[issue.location] = {
                     total: 0,
@@ -182,7 +369,7 @@ class DataManager {
         
         // Calculate average resolution time
         Object.keys(locationStats).forEach(location => {
-            const resolvedIssues = issues.filter(i => i.location === location && i.status === 'Resolved');
+            const resolvedIssues = filteredIssues.filter(i => i.location === location && i.status === 'Resolved');
             if (resolvedIssues.length > 0) {
                 const totalTime = resolvedIssues.reduce((sum, issue) => {
                     const reported = new Date(issue.timestamp);
