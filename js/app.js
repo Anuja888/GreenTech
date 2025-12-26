@@ -3,7 +3,7 @@
 class EcoTraceApp {
     constructor() {
         if (window.ecoTraceApp) {
-            return; // Prevent re-initialization
+            return; 
         }
         window.ecoTraceApp = this;
         this.workspace = dataManager.getWorkspace();
@@ -13,7 +13,7 @@ class EcoTraceApp {
     }
 
     init() {
-        // Check if workspace and role are set
+        
         if (!this.workspace) {
             uiManager.showWorkspaceSelection();
             return;
@@ -23,7 +23,7 @@ class EcoTraceApp {
             return;
         }
         
-        // Both are set, initialize the app
+        
         this.initializeApp();
     }
 
@@ -39,7 +39,7 @@ class EcoTraceApp {
     }
 
     showCalculationInfo() {
-        // Add a section explaining calculations
+       
         const calcSection = document.createElement('div');
         calcSection.className = 'section';
         calcSection.innerHTML = `
@@ -111,17 +111,17 @@ class EcoTraceApp {
             </div>
         `;
         
-        // Insert after main content
+        
         document.getElementById('main-content').appendChild(calcSection);
     }
 }
 
-// Initialize the app when DOM is loaded
+
 document.addEventListener('DOMContentLoaded', () => {
     window.ecoTraceApp = new EcoTraceApp();
 });
 
-// For development/testing: Add a reset function
+
 window.resetApp = function() {
     dataManager.clearAll();
     location.reload();
