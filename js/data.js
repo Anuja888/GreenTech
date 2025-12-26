@@ -12,7 +12,7 @@ class DataManager {
         };
     }
 
-    // Workspace management
+    
     setWorkspace(workspace) {
         this.storage.setItem(this.keys.WORKSPACE, workspace);
     }
@@ -21,7 +21,7 @@ class DataManager {
         return this.storage.getItem(this.keys.WORKSPACE);
     }
 
-    // Role management (session-based)
+    
     setRole(role) {
         sessionStorage.setItem(this.keys.ROLE, role);
     }
@@ -30,7 +30,7 @@ class DataManager {
         return sessionStorage.getItem(this.keys.ROLE);
     }
 
-    // Issues management
+   
     getIssues() {
         const issues = this.storage.getItem(this.keys.ISSUES);
         return issues ? JSON.parse(issues) : [];
@@ -68,7 +68,7 @@ class DataManager {
         }
     }
 
-    // Impact calculations
+    
     getImpactCalculations() {
         const calc = this.storage.getItem(this.keys.IMPACT_CALCULATIONS);
         return calc ? JSON.parse(calc) : this.getDefaultCalculations();
@@ -77,22 +77,22 @@ class DataManager {
     getDefaultCalculations() {
         return {
             water: {
-                shower: 50, // liters per 5 min shower
-                toilet: 6, // liters per flush
-                faucet: 9, // liters per minute
-                washingMachine: 50, // liters per load
-                dishwasher: 15 // liters per cycle
+                shower: 50, 
+                toilet: 6,
+                faucet: 9, 
+                washingMachine: 50, 
+                dishwasher: 15 
             },
             energy: {
-                ac: 1.5, // kWh per hour
-                heater: 1.2, // kWh per hour
-                refrigerator: 0.15, // kWh per hour
-                washingMachine: 0.8, // kWh per load
-                dishwasher: 1.2 // kWh per cycle
+                ac: 1.5, 
+                heater: 1.2, 
+                refrigerator: 0.15, 
+                washingMachine: 0.8, 
+                dishwasher: 1.2 
             },
             carbon: {
-                water: 0.0003, // kg CO2 per liter
-                electricity: 0.4 // kg CO2 per kWh (average)
+                water: 0.0003, 
+                electricity: 0.4 
             }
         };
     }
@@ -129,20 +129,20 @@ class DataManager {
         const resolvedIssues = filteredIssues.filter(i => i.status === 'Resolved').length;
         const pendingIssues = totalIssues - resolvedIssues;
         
-        // Initialize impact variables
+        
         let waterSaved = 0;
         let energySaved = 0;
         let co2Avoided = 0;
         
-        // Rule-based impact calculation for resolved issues
+        
         filteredIssues.forEach(issue => {
             if (issue.status === 'Resolved') {
                 if (issue.resourceType === 'Water') {
-                    // Each resolved water issue saves 30 liters (equivalent to 2 toilet flushes + 2 faucet minutes)
+                    
                     waterSaved += 30;
                     co2Avoided += 30 * calculations.carbon.water;
                 } else if (issue.resourceType === 'Electricity') {
-                    // Each resolved energy issue saves 5 kWh (equivalent to 3 hours of AC or 6 hours of refrigerator)
+                    
                     energySaved += 5;
                     co2Avoided += 5 * calculations.carbon.electricity;
                 }
@@ -159,7 +159,7 @@ class DataManager {
         };
     }
 
-    // Trend analysis
+    
     getTrends(filters = {}) {
         const issues = this.getIssues();
         const calculations = this.getImpactCalculations();
@@ -187,7 +187,7 @@ class DataManager {
             filteredIssues = filteredIssues.filter(issue => issue.location === filters.location);
         }
         
-        // Group by day
+        
         const dailyData = {};
         filteredIssues.forEach(issue => {
             const date = new Date(issue.timestamp).toISOString().split('T')[0];
@@ -205,7 +205,7 @@ class DataManager {
             }
         });
         
-        // Convert to array and sort by date
+        
         const trends = Object.entries(dailyData)
             .map(([date, data]) => ({ date, ...data }))
             .sort((a, b) => a.date.localeCompare(b.date));
@@ -213,7 +213,7 @@ class DataManager {
         return trends;
     }
 
-    // Period comparison
+    
     getPeriodComparison(filters = {}) {
         const issues = this.getIssues();
         const now = new Date();
@@ -224,7 +224,7 @@ class DataManager {
             filteredIssues = filteredIssues.filter(issue => issue.location === filters.location);
         }
         
-        // Determine current period
+        
         let currentStart, previousStart, previousEnd;
         if (filters.timeRange === 'week') {
             currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -239,7 +239,7 @@ class DataManager {
             previousStart = new Date(now.getFullYear() - 2, now.getMonth(), now.getDate());
             previousEnd = currentStart;
         } else {
-            // All time - compare last 30 days vs previous 30 days
+            
             currentStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
             previousStart = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
             previousEnd = currentStart;
@@ -292,7 +292,7 @@ class DataManager {
         return sign + change.toFixed(1) + '%';
     }
 
-    // High-impact locations
+    
     getHighImpactLocations(filters = {}) {
         const hotspots = this.getHotspots(filters);
         
